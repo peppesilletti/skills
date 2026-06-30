@@ -1,6 +1,6 @@
 # Skills For Modern Product Engineers
 
-A collection of [Claude Code](https://claude.com/claude-code) skills for the way modern product engineers actually work — moving from a hunch to a shipped feature without losing product sense, design taste, or engineering rigor along the way.
+A collection of [Claude Code](https://claude.com/claude-code) skills for the way modern product engineers actually work.
 
 These are pulled from my own daily practice. Each one encodes a piece of craft I'd otherwise have to re-explain to an agent from scratch every time.
 
@@ -33,4 +33,4 @@ skills/<category>/<skill-name>/SKILL.md   # one folder per skill
 
 ## License
 
-[MIT](./LICENSE) © Peppe Silletti
+[MIT](./LICENSE) © Giuseppe Silletti
