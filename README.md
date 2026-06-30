@@ -1,6 +1,6 @@
 # Skills For Modern Product Engineers
 
-A collection of [Claude Code](https://claude.com/claude-code) skills for the way modern product engineers actually work.
+A collection of agent skills for the way modern product engineers actually work.
 
 These are pulled from my own daily practice. Each one encodes a piece of craft I'd otherwise have to re-explain to an agent from scratch every time.
 
