@@ -1,0 +1,535 @@
+<!doctype html>
+<!--
+  feature-plan · artifact template
+  ────────────────────────────────
+  This is a FIXED SCAFFOLD. The agent fills the {{TOKENS}} and the
+  comment-delimited slots; it does NOT restyle the chrome below.
+
+  How to fill it (markers shown WITHOUT their comment delimiters so this header
+  comment doesn't terminate early — in the body they appear as real comments):
+    • {{TOKEN}}            → replace with one value.
+    • SLOT … markers       → a region to populate. Each ships ONE canonical
+                             example unit; clone it for more, delete extras.
+    • OPTIONAL … markers   → a whole region is droppable. Cut between the marked
+                             BEGIN/END lines and the HTML stays valid.
+
+  Three invariants you must not break (details at each site):
+    1. GRID — the story-map column count is declared in ONE place and every
+       slice row must emit exactly that many cells.
+    2. PATH HONESTY — `exists` nodes get a real path + a vscode click link;
+       `new` nodes get a described path/analog and NO vscode link; `external`
+       gets no path. Never let new code masquerade as an existing file.
+    3. Keep all CSS / mermaid init / legend below byte-for-byte. It is
+       content-free; editing it is off-contract.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — Plan</title>
+<style>
+  /* ---- shadcn design tokens (default light theme), ported to vanilla CSS ---- */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --border: 240 5.9% 90%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --radius: 0.625rem;
+    /* semantic accents for the diagram */
+    --new: 217 91% 60%;        /* blue  = new code */
+    --new-soft: 214 95% 96%;
+    --ext: 262 83% 58%;        /* violet = external service */
+    --ext-soft: 263 85% 97%;
+    /* layered shadows (shadows over borders) */
+    --shadow-sm: 0 1px 2px hsl(240 5% 10% / .06), 0 1px 1px hsl(240 5% 10% / .04);
+    --shadow-md: 0 4px 12px hsl(240 5% 10% / .08), 0 2px 4px hsl(240 5% 10% / .05);
+    --shadow-lg: 0 12px 28px hsl(240 5% 10% / .12), 0 4px 8px hsl(240 5% 10% / .06);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; padding: 48px 20px 80px;
+    background: hsl(240 5% 97%);
+    color: hsl(var(--foreground));
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { text-wrap: pretty; margin: 0; }
+
+  /* ---- enter animation: split + stagger, subtle ---- */
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .reveal { animation: rise .5s cubic-bezier(0.2, 0, 0, 1) both; }
+  @media (prefers-reduced-motion: reduce) { .reveal { animation: none; } }
+
+  /* ---- header ---- */
+  .header h1 { font-size: 26px; letter-spacing: -0.02em; }
+  .header .lede { color: hsl(var(--muted-foreground)); margin-top: 8px; font-size: 16px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .pill {
+    font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .pill.warn { color: hsl(38 92% 35%); background: hsl(45 93% 95%); border-color: hsl(45 80% 82%); }
+
+  /* ---- section chunk ---- */
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; }
+  .sec-num {
+    font-size: 12px; font-weight: 700; color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+    background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+    width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex: none;
+  }
+  .sec-head h2 { font-size: 18px; letter-spacing: -0.01em; }
+  .sec-head .note { color: hsl(var(--muted-foreground)); font-size: 13px; margin-left: auto; }
+
+  /* ---- generic card ---- */
+  .card {
+    background: hsl(var(--card)); color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    box-shadow: var(--shadow-sm); padding: 18px;
+  }
+
+  /* ---- §1 prototype toolbox (the idea) ----
+     On-brand building blocks the {{STATIC_PROTOTYPE}} slot can draw from for the
+     "what it feels like" snapshot. Use the kit that fits the feature, or compose
+     freely with the design tokens — but stay on-palette. CHAT needs no frame
+     (bubbles read as chat); PANEL and TABLE sit in the shared .mock window frame. */
+
+  /* CHAT — conversational / assistant / prompt→response */
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 14px; box-shadow: var(--shadow-sm); }
+  .bubble.you { align-self: flex-end; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-bottom-right-radius: 6px; }
+  .bubble.bot { align-self: flex-start; background: hsl(var(--muted)); border-bottom-left-radius: 6px; }
+  .bubble.sys { align-self: center; font-size: 12px; color: hsl(var(--muted-foreground)); background: transparent; box-shadow: none; font-style: italic; }
+
+  /* shared window frame (PANEL + TABLE kits) — reads as a real screen */
+  .mock { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }
+  .mock-bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background: hsl(var(--muted)); border-bottom: 1px solid hsl(var(--border)); }
+  .mock-bar .dot { width: 10px; height: 10px; border-radius: 999px; background: hsl(var(--border)); flex: none; }
+  .mock-bar .title { margin-left: 6px; font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+  .mock-body { padding: 15px 16px; display: flex; flex-direction: column; gap: 11px; }
+
+  /* PANEL primitives — settings / forms / config / controls */
+  .mock-row { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+  .mock-row .lbl { font-size: 13px; color: hsl(var(--foreground)); }
+  .mock-row .sub { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+  .mock-field { flex: 1; min-width: 0; padding: 8px 11px; border: 1px solid hsl(var(--border)); border-radius: 8px; font-size: 13px; color: hsl(var(--muted-foreground)); background: hsl(var(--background)); }
+  .mock-select { padding: 7px 10px; border: 1px solid hsl(var(--border)); border-radius: 8px; font-size: 12.5px; color: hsl(var(--foreground)); background: hsl(var(--background)); }
+  .mock-toggle { width: 38px; height: 22px; border-radius: 999px; background: hsl(var(--border)); position: relative; flex: none; }
+  .mock-toggle.on { background: hsl(var(--new)); }
+  .mock-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 999px; background: #fff; box-shadow: var(--shadow-sm); transition: left .15s cubic-bezier(0.2,0,0,1); }
+  .mock-toggle.on::after { left: 18px; }
+  .mock-btn { align-self: flex-start; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: hsl(var(--primary-foreground)); background: hsl(var(--primary)); border: 1px solid hsl(var(--primary)); }
+  .mock-btn.ghost { color: hsl(var(--foreground)); background: hsl(var(--card)); border-color: hsl(var(--border)); }
+
+  /* TABLE primitives — data views / lists / results / feeds / dashboards */
+  .mock-table { display: flex; flex-direction: column; font-size: 12.5px; }
+  .mock-tr { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; padding: 8px 2px; align-items: center; }
+  .mock-tr + .mock-tr { border-top: 1px solid hsl(var(--border)); }
+  .mock-tr.head { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: hsl(var(--muted-foreground)); border-bottom: 2px solid hsl(var(--border)); }
+  .mock-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--border)); margin-right: 6px; vertical-align: 1px; }
+  .mock-dot.live { background: hsl(142 71% 45%); }
+
+  .scope-note { margin-top: 6px; font-size: 13px; color: hsl(var(--muted-foreground)); border-left: 3px solid hsl(var(--new)); padding-left: 12px; }
+
+  /* ---- inline code (tooltips) ---- */
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+
+  /* ---- diagram legend ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+
+  /* ---- mermaid host ---- */
+  .mermaid-host { display: flex; justify-content: center; min-height: 60px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+  .mermaid-host svg { max-width: 100%; height: auto; }
+  /* clickable nodes: signal affordance + press feedback via filter only —
+     CSS transform would clobber mermaid's own per-node translate and break layout */
+  .mermaid-host .node[id] { cursor: pointer; transition: filter .14s cubic-bezier(0.2,0,0,1); }
+  .mermaid-host .node[id]:hover { filter: drop-shadow(0 3px 8px hsl(240 5% 10% / .14)); }
+  .mermaid-host .node[id]:active { filter: brightness(0.96); }
+  .mermaid-host .edgeLabel { font-size: 12px; }
+
+  /* ---- story map ---- */
+  .storymap { overflow: visible; padding-bottom: 4px; }
+  /* GRID INVARIANT (1 of 1): the `repeat(N, …)` below sets the backbone column
+     count. Set N to your number of backbone columns. The header row must have N
+     `.sm-bb` cells AND every slice row must have exactly N `.sm-cell` cells. */
+  .smgrid { display: grid; grid-template-columns: 124px repeat(7, minmax(96px, 1fr)); gap: 6px; min-width: 0; }
+  .sm-bb { font-size: 11px; font-weight: 600; color: hsl(var(--foreground)); padding: 4px 8px 8px; border-bottom: 2px solid hsl(var(--border)); text-align: center; align-self: end; }
+  .sm-bb .ord { display: block; font-size: 10px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+  .sm-lab { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; background: hsl(var(--muted)); }
+  .sm-lab:hover, .sm-lab:focus-within { z-index: 5; }
+  .sm-lab .n { width: 22px; height: 22px; border-radius: 6px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); display: grid; place-items: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
+  .sm-lab .t { font-size: 12px; font-weight: 600; line-height: 1.2; }
+  .sm-lab.start { background: hsl(var(--new-soft)); }
+  .sm-lab.start .n { background: hsl(var(--new)); }
+  .sm-lab.opt { background: transparent; border: 1px dashed hsl(var(--border)); }
+  .sm-lab.opt .n { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .sm-cell { border-radius: 8px; min-height: 42px; padding: 7px 9px; font-size: 11.5px; line-height: 1.25; display: flex; align-items: center; }
+  .sm-cell.fill { background: hsl(var(--new-soft)); border: 1px solid hsl(var(--new) / .4); color: hsl(217 55% 32%); }
+  .sm-cell.canned { background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); font-style: italic; }
+  .sm-cell.empty { border: 1px dashed hsl(var(--border) / .65); }
+  .sm-ribbon { position: relative; margin-top: 12px; font-size: 12px; color: hsl(263 35% 38%); border: 1px dashed hsl(var(--ext)); background: hsl(var(--ext-soft)); border-radius: 8px; padding: 8px 12px; }
+
+  /* ---- info icon + hover tooltip ---- */
+  .info { flex: none; display: inline-flex; padding: 4px; position: relative; cursor: help; outline: none; vertical-align: middle; }
+  /* extend the 24px visible target to a ~40px hit area without shifting layout.
+     safe from overlap: vertical row pitch (~48px) exceeds 40px, and neighbours
+     to the right are non-interactive data cells (no competing hit area). */
+  .info::before { content: ''; position: absolute; inset: -8px; border-radius: 999px; }
+  .sm-lab .info { margin-left: 1px; }
+  .sm-ribbon .info { margin: 0 2px; }
+  .i-ico { width: 16px; height: 16px; border-radius: 999px; border: 1px solid currentColor; color: hsl(var(--muted-foreground)); font: italic 700 11px/1 Georgia, "Times New Roman", serif; display: inline-grid; place-items: center; transition: color .14s; }
+  .info:hover .i-ico, .info:focus-visible .i-ico { color: hsl(var(--new)); }
+  .info:focus-visible { border-radius: 999px; box-shadow: 0 0 0 2px hsl(var(--new) / .5); }
+  .tip {
+    position: absolute; left: calc(100% + 6px); top: 50%; width: 248px; z-index: 20; pointer-events: none;
+    opacity: 0; visibility: hidden; transform: translateY(-50%) translateX(-4px);
+    transition-property: opacity, transform, visibility; transition-duration: .15s; transition-timing-function: cubic-bezier(0.2,0,0,1);
+    background: hsl(var(--card)); color: hsl(var(--card-foreground)); text-align: left; white-space: normal; font-weight: 400;
+    border: 1px solid hsl(var(--border)); border-radius: 10px; box-shadow: var(--shadow-lg);
+    padding: 11px 13px; font-size: 12px; line-height: 1.5;
+  }
+  .info:hover .tip, .info:focus-within .tip { opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0); }
+  .tip b { color: hsl(var(--foreground)); }
+  .tip code { color: hsl(217 55% 38%); }
+  .tip .tip-row { display: block; margin-top: 6px; color: hsl(var(--muted-foreground)); }
+  .tip .tip-row b { margin-right: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+
+  /* ---- §4 decision cards · scannable, not a wall of text ---- */
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 680px) { .opts { grid-template-columns: 1fr; } }
+  .opt { display: flex; flex-direction: column; gap: 9px; }
+  /* risk as a color-coded pill with a leading dot */
+  .opt .risk { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+  .opt .risk::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .opt.safe .risk { color: hsl(142 71% 32%); background: hsl(142 60% 96%); border-color: hsl(142 50% 82%); }
+  .opt.mid  .risk { color: hsl(38 92% 34%);  background: hsl(45 93% 95%);  border-color: hsl(45 80% 82%); }
+  .opt.hot  .risk { color: hsl(0 72% 45%);   background: hsl(0 86% 97%);   border-color: hsl(0 80% 89%); }
+  .opt h3 { font-size: 14.5px; letter-spacing: -0.01em; }
+  .opt .gist { font-size: 13px; color: hsl(var(--foreground)); }
+  /* compact label/value rows replace the paragraph — one fact per line */
+  .opt-meta { display: flex; flex-direction: column; gap: 6px; margin: 1px 0 0; }
+  .opt-meta > div { display: grid; grid-template-columns: 62px 1fr; gap: 9px; align-items: baseline; }
+  .opt-meta dt { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
+  .opt-meta dd { margin: 0; font-size: 12.5px; line-height: 1.45; color: hsl(var(--muted-foreground)); }
+  .opt-meta dd b { color: hsl(var(--foreground)); font-weight: 600; }
+  /* OPTIONAL tiny in-card flow diagram — chips joined by arrows */
+  .opt-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 10px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: 8px; }
+  .opt-flow .fl-node { font-size: 11px; font-weight: 500; color: hsl(var(--foreground)); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 6px; padding: 3px 8px; box-shadow: var(--shadow-sm); }
+  .opt-flow .fl-node.accent { color: hsl(217 55% 32%); background: hsl(var(--new-soft)); border-color: hsl(var(--new) / .5); }
+  .opt-flow .fl-arrow { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1; }
+
+  /* ---- download-as-PDF button (screen only) ---- */
+  .pdf-btn {
+    position: fixed; top: 18px; right: 18px; z-index: 50;
+    display: inline-flex; align-items: center; gap: 7px;
+    font: 500 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: hsl(var(--primary-foreground)); background: hsl(var(--primary));
+    border: 1px solid hsl(var(--primary)); border-radius: 8px;
+    padding: 9px 13px; cursor: pointer; box-shadow: var(--shadow-md);
+    transition: filter .14s cubic-bezier(0.2,0,0,1), transform .08s ease;
+  }
+  .pdf-btn:hover { filter: brightness(1.12); }
+  .pdf-btn:active { transform: translateY(1px); }
+  .pdf-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+
+  /* ---- print / save-as-PDF ----
+     Triggered by the button (window.print) or the browser's own print → the
+     user picks "Save as PDF". color-adjust keeps the colored cells/pills/tokens
+     from being stripped; break rules keep cards whole across page breaks. */
+  @media print {
+    @page { margin: 14mm; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; padding: 0; }
+    .wrap { max-width: none; gap: 18px; }
+    .pdf-btn { display: none !important; }
+    .reveal { animation: none !important; }      /* show final state, no fade-in */
+    section, .card, .mock, .opt { break-inside: avoid; }
+    .sec-head { break-after: avoid; }
+    .mermaid-host svg { max-width: 100%; height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Download-as-PDF · opens the browser print dialog → "Save as PDF". Screen-only
+     (hidden in print). Chrome — leave as-is. -->
+<button class="pdf-btn" type="button" onclick="window.print()" aria-label="Download as PDF">
+  <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 4 5-4M5 21h14"/></svg>
+  Download PDF
+</button>
+
+<div class="wrap">
+
+  <!-- ===== Header ===== -->
+  <header class="header reveal" style="animation-delay:0ms">
+    <h1>{{TITLE}}</h1>
+    <p class="lede">{{LEDE — one sentence: what it is and who it's for, in plain language}}</p>
+    <!-- SLOT pills · one .pill per framing tag. Add a single .pill.warn ONLY if
+         §4 has an open decision (links the reader's eye to it). -->
+    <div class="pills">
+      <span class="pill">{{TAG}}</span>
+      <span class="pill warn">Open decision: {{DECISION TOPIC}} →</span>
+    </div>
+  </header>
+
+  <!-- ===== 1 · The idea ===== -->
+  <section class="reveal" style="animation-delay:80ms">
+    <div class="sec-head"><span class="sec-num">1</span><h2>What it feels like</h2><span class="note">read this first</span></div>
+    <!-- {{STATIC_PROTOTYPE}} · build the ENTIRE §1 container here: a short, concrete,
+         STATIC snapshot that makes the idea FELT before any architecture. Decide the
+         shape from how THIS feature is actually used — do NOT default to chat.
+         Fill it with specific, real-sounding content, not generic placeholder text.
+
+         Stay on-brand: draw from the §1 toolbox classes in the CSS above, or compose
+         with the design tokens — don't invent off-palette styles. Available kits:
+           • CHAT  — .card.chat + .bubble.you / .bot / .sys   (conversational)
+           • PANEL — .mock frame + .mock-row / .mock-toggle / .mock-field /
+                     .mock-select / .mock-btn                 (settings · forms · controls)
+           • TABLE — .mock frame + .mock-table / .mock-tr / .mock-dot
+                                                              (data · lists · results)
+         Wrap the prototype in a .card (or a .mock frame, which reads as a card).
+         End with a <p class="scope-note"> ONLY if a line foreshadows the §4 decision. -->
+    {{STATIC_PROTOTYPE}}
+  </section>
+
+  <!-- ===== 2 · The build ===== -->
+  <section class="reveal" style="animation-delay:160ms">
+    <div class="sec-head"><span class="sec-num">2</span><h2>The build — story map</h2><span class="note">backbone = the journey · rows = shippable slices</span></div>
+
+    <div class="card storymap">
+      <!-- Remember the GRID INVARIANT: the .smgrid CSS `repeat(N,…)` must equal
+           the backbone column count, and EVERY row below (header + each slice)
+           must contain exactly N cells. -->
+      <div class="smgrid">
+
+        <!-- header: backbone · first cell is the empty corner above the labels.
+             SLOT backbone · one .sm-bb per journey step, left→right. -->
+        <div></div>
+        <div class="sm-bb"><span class="ord">1 →</span>{{step 1}}</div>
+        <div class="sm-bb"><span class="ord">2 →</span>{{step 2}}</div>
+        <div class="sm-bb"><span class="ord">3 →</span>{{step 3}}</div>
+        <div class="sm-bb"><span class="ord">4 →</span>{{step 4}}</div>
+        <div class="sm-bb"><span class="ord">5 →</span>{{step 5}}</div>
+        <div class="sm-bb"><span class="ord">6 →</span>{{step 6}}</div>
+        <div class="sm-bb"><span class="ord">7 →</span>{{step 7}}</div>
+
+        <!-- SLOT slices · ONE row = one shippable vertical slice. Clone the row
+             block below per slice. Each row = a .sm-lab (label + tooltip) then
+             exactly N .sm-cell cells.
+               .sm-lab.start → Slice 0, the throwaway clickable mock (highlighted)
+               .sm-lab.opt   → an optional / later slice (dashed)
+               .sm-lab       → a normal slice
+             Cell types under each backbone step:
+               .fill   → real work this slice ships for that step
+               .canned → faked/stub for that step (mock data, hard-coded reply)
+               .empty  → this slice doesn't touch that step
+             Tooltip rows: <b>Files</b> = files to create/touch (or an existing
+             analog to model new code on); <b>Verify</b> = how to see it work. -->
+
+        <!-- ── Slice 0 (the mock) ── -->
+        <div class="sm-lab start"><span class="n">0</span><span class="t">{{slice 0 name}}</span><span class="info" tabindex="0" aria-label="Slice 0 details"><span class="i-ico">i</span><span class="tip" role="tooltip"><b>{{title}}.</b> {{one-line description of the throwaway mock}}<span class="tip-row"><b>Files</b> {{files · or analog to mimic}}</span><span class="tip-row"><b>Verify</b> {{how to see it}}</span></span></span></div>
+        <div class="sm-cell fill">{{step 1 work}}</div>
+        <div class="sm-cell canned">{{step 2 faked}}</div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+
+        <!-- ── Slice 1 ── (clone this block for each further slice) ── -->
+        <div class="sm-lab"><span class="n">1</span><span class="t">{{slice name}}</span><span class="info" tabindex="0" aria-label="Slice 1 details"><span class="i-ico">i</span><span class="tip" role="tooltip"><b>{{title}}.</b> {{what this slice ships, end to end}}<span class="tip-row"><b>Files</b> {{files · or analog to mimic}}</span><span class="tip-row"><b>Verify</b> {{how to see it}}</span></span></span></div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell fill">{{work}}</div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell fill">{{work}}</div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+        <div class="sm-cell empty"></div>
+
+      </div>
+
+      <!-- OPTIONAL ribbon · BEGIN. A cross-cutting QUALITY layer that is NOT a
+           journey step (so not a column) — e.g. streaming, offline, perf. Delete
+           the whole BEGIN…END block if there is none. -->
+      <div class="sm-ribbon"><b>{{Layer name}}</b><span class="info" tabindex="0" aria-label="Layer details"><span class="i-ico">i</span><span class="tip" role="tooltip"><b>{{title}}.</b> {{what it does}}<span class="tip-row"><b>Files</b> {{files · or analog}}</span><span class="tip-row"><b>Verify</b> {{how to see it}}</span></span></span> — {{why it's a layer across cells, not a column}}.</div>
+      <!-- OPTIONAL ribbon · END -->
+    </div>
+
+  </section>
+
+  <!-- ===== 3 · System structure ===== -->
+  <section class="reveal" style="animation-delay:240ms">
+    <div class="sec-head"><span class="sec-num">3</span><h2>System structure</h2><span class="note">click a box → opens the file in your editor</span></div>
+    <div class="card">
+      <div id="arch-diagram" class="mermaid-host">rendering diagram…</div>
+
+      <!-- legend is static — leave as-is -->
+      <div class="legend">
+        <span><span class="swatch" style="background:hsl(var(--new-soft));border:1px solid hsl(var(--new))"></span>New code</span>
+        <span><span class="swatch" style="background:hsl(var(--card));border:1px solid hsl(var(--border))"></span>Already exists</span>
+        <span><span class="swatch" style="background:hsl(var(--ext-soft));border:1px solid hsl(var(--ext))"></span>External</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4 · Decision needed ===== -->
+  <!-- OPTIONAL §4 · BEGIN. Render ONLY if there's a real open decision. Delete
+       the whole <section>…</section> (and the .pill.warn in the header) if not.
+       Cards are risk-rated: .safe (green) → .mid (amber) → .hot (red). Order
+       them safest-first. Usually 3, but 2 is fine.
+
+       Keep each card SCANNABLE — never a wall of text:
+         • .gist     → ONE short sentence: what the option is.
+         • .opt-meta → 2–3 label/value rows (Trade-off, Cost, Effort, Best for, …).
+                       One fact per row; bold the key word with <b>. Pick the
+                       labels that matter for THIS decision; don't pad to three.
+         • .opt-flow → OPTIONAL tiny diagram, only when the option is a flow/shape
+                       worth showing (pipeline, fan-out, before→after). Chips joined
+                       by → arrows; mark the option's key step with .accent. Delete
+                       the .opt-flow block on cards that don't need it. -->
+  <section class="reveal" style="animation-delay:320ms">
+    <div class="sec-head"><span class="sec-num">4</span><h2>Decision needed — {{topic}}</h2><span class="note">{{what it shapes}}</span></div>
+    <div class="opts">
+
+      <!-- safest · this example shows the OPTIONAL mini-diagram -->
+      <div class="card opt safe">
+        <span class="risk">Safest</span>
+        <h3>{{option name}}</h3>
+        <p class="gist">{{one line: what this option is}}</p>
+        <div class="opt-flow">
+          <span class="fl-node">{{step}}</span><span class="fl-arrow">→</span>
+          <span class="fl-node accent">{{key step}}</span><span class="fl-arrow">→</span>
+          <span class="fl-node">{{step}}</span>
+        </div>
+        <dl class="opt-meta">
+          <div><dt>Trade-off</dt><dd>{{the catch, in a few words}}</dd></div>
+          <div><dt>Cost</dt><dd>{{effort / what it costs}}</dd></div>
+        </dl>
+      </div>
+
+      <!-- moderate · no diagram — just gist + meta rows -->
+      <div class="card opt mid">
+        <span class="risk">Moderate</span>
+        <h3>{{option name}}</h3>
+        <p class="gist">{{one line: what this option is}}</p>
+        <dl class="opt-meta">
+          <div><dt>Trade-off</dt><dd>{{the catch}}</dd></div>
+          <div><dt>Best for</dt><dd>{{when to pick it}}</dd></div>
+        </dl>
+      </div>
+
+      <!-- riskiest -->
+      <div class="card opt hot">
+        <span class="risk">Riskiest</span>
+        <h3>{{option name}}</h3>
+        <p class="gist">{{one line: powerful but dangerous}}</p>
+        <dl class="opt-meta">
+          <div><dt>Upside</dt><dd>{{why it's tempting}}</dd></div>
+          <div><dt>Risk</dt><dd>{{what can go wrong}}</dd></div>
+        </dl>
+      </div>
+
+    </div>
+  </section>
+  <!-- OPTIONAL §4 · END -->
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  /* ---- diagram helpers (leave as-is) ---- */
+  const badge = (k) => {
+    const map = { new: ['NEW', '#2563eb', '#bfdbfe'], exists: ['EXISTS', '#6b7280', '#d1d5db'], ext: ['EXTERNAL', '#7c3aed', '#ddd6fe'] };
+    const [t, fg, br] = map[k];
+    return ` <span style='font-size:9px;font-weight:700;letter-spacing:.05em;color:${fg};background:#fff;border:1px solid ${br};border-radius:9px;padding:1px 6px;white-space:nowrap'>${t}</span>`;
+  };
+  // node(name, kind, path, desc): kind ∈ 'new' | 'exists' | 'ext'
+  const node = (name, kind, path, d) =>
+    `<span style='font-weight:600;font-size:13px;color:#1a1a1a'>${name}</span>${badge(kind)}` +
+    `<br/><span style='font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:#6b7280'>${path}</span>` +
+    `<br/><span style='font-size:11px;color:#9aa0a6;font-style:italic'>${d}</span>`;
+
+  /* ---- SLOT archDef · the architecture graph. ----------------------------
+     Fill the three regions marked below: NODES, EDGES, CLICKS. Keep the
+     classDef block and the `class …` assignments in sync with your nodes.
+
+     PATH HONESTY (invariant): for a node(name,'exists',…) the path is a real
+     file and it SHOULD get a `click` line opening it. For node(name,'new',…)
+     the path describes where new code lands or an existing analog to mimic —
+     give it NO click line (nothing to open yet). 'ext' nodes get no path/click.
+
+     vscode click syntax (use the installer's ABSOLUTE repo path):
+       click ID "vscode://file/ABSOLUTE/PATH/file.ext:LINE" "hover label"
+  --------------------------------------------------------------------------- */
+  const archDef = `flowchart TD
+  %% ── NODES ── id["${'$'}{node(name, kind, path, desc)}"]  (DB uses [( … )])
+  UI["${node('{{Frontend entry}}', 'new', '{{path/or-analog}}', '{{what it does}}')}"]
+  subgraph API["{{Backend module}}"]
+    direction TB
+    Ctrl["${node('{{Controller/Service}}', 'new', '{{path/or-analog}}', '{{what it does}}')}"]
+    Dep["${node('{{Existing dependency}}', 'exists', '{{real/path.ext}}', '{{what it does}}')}"]
+  end
+  Ext["${node('{{External service}}', 'ext', '{{e.g. third-party API}}', '{{what it does}}')}"]
+  DB[("${node('{{Datastore}}', 'exists', '{{tables/collections}}', '{{what it stores}}')}")]
+
+  %% ── EDGES ── A -->|label| B   ·   A <-->|label| B   ·   A -. uses .-> B
+  UI -->|{{request}}| Ctrl
+  Ctrl <-->|{{calls}}| Ext
+  Ctrl -. uses .-> Dep
+  Ctrl -->|{{reads/writes}}| DB
+
+  %% ── CLICKS ── only for 'exists' nodes (real files). Omit for 'new'/'ext'.
+  click Dep "vscode://file/{{ABSOLUTE/PATH/to/dependency.ext}}:1" "{{hover label}}"
+  click DB "vscode://file/{{ABSOLUTE/PATH/to/datastore-or-migrations/}}" "{{hover label}}"
+
+  %% ── CLASSES ── keep in sync with node kinds above
+  classDef new fill:#eaf3ff,stroke:#3b82f6,color:#0b2e6b;
+  classDef existing fill:#ffffff,stroke:#cfd3d9,color:#1a1a1a;
+  classDef ext fill:#f4efff,stroke:#7c3aed,color:#3b0764;
+  class UI,Ctrl new;
+  class Dep,DB existing;
+  class Ext ext;`;
+
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'loose',
+    theme: 'base',
+    flowchart: { htmlLabels: true, curve: 'basis' },
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+      fontSize: '13px',
+      lineColor: '#9aa0a6',
+      primaryColor: '#ffffff',
+      primaryBorderColor: '#cfd3d9',
+      primaryTextColor: '#1a1a1a',
+      clusterBkg: '#fbfbfc',
+      clusterBorder: '#e5e7eb'
+    }
+  });
+
+  mermaid.render('archSvg', archDef)
+    .then(({ svg, bindFunctions }) => {
+      const host = document.getElementById('arch-diagram');
+      host.innerHTML = svg;
+      if (bindFunctions) bindFunctions(host);
+    })
+    .catch((err) => {
+      document.getElementById('arch-diagram').textContent = 'Diagram failed to render: ' + err.message;
+    });
+</script>
+</body>
+</html>
